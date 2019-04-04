@@ -1,0 +1,11 @@
+###
+# kubernetes kubelet (minion) config
+
+# The address for the info server to serve on (set to 0.0.0.0 or "" for all interfaces)
+KUBELET_ADDRESS="--address=0.0.0.0"
+
+# You may leave this blank to use the actual hostname
+KUBELET_HOSTNAME=""
+
+# Location of the api-server
+KUBELET_ARGS="--fail-swap-on=false --cgroup-driver=systemd --kubeconfig=/etc/kubernetes/master-kubeconfig.yaml"
