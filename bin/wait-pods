@@ -1,0 +1,23 @@
+#!/bin/sh
+# Wait for pods in namespaces $* to be ready
+set -e
+
+get_wait() {
+    DELAY=1
+    while UNREADY=$(kubectl get pods $* | grep -v -E "(Running|Completed|STATUS)"); do
+        echo "Unready pods in $*, waiting..."
+        echo $UNREADY
+        sleep $DELAY;
+        DELAY=5
+    done
+    echo "All pods in $* are ready"
+    kubectl get pods $*
+}
+
+if test -z "$*"; then
+    get_wait --all-namespaces
+else
+    for N in "$@"; do get_wait --namespace=$N; done
+fi
+echo
+

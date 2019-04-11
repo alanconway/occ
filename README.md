@@ -161,6 +161,14 @@ sonobuoy e2e $(sonobuoy retrieve)
 sonobuoy delete --wait --all
 ```
 
+## Knative install
+
+```
+./bin/apply-knative
+```
+
+Verify istio: https://github.com/istio/istio/tree/master/samples/helloworld
+
 ## Re-setting the cluster
 
 These steps attempt to completely wipe out all traces of an existing
@@ -186,3 +194,24 @@ done
 for h in $HOSTS; do ssh root@$h reboot now; done
 ```
 
+## Use a private docker registry
+
+With a multi-node cluster you need to pull images from an external registry.
+
+The popular minikube short-cut of using the cluster's docker daemon directly
+only works because there is only on node, so only one docker daemon.
+
+Here's how to use your own dockerhub.io account as a registry:
+https://kubernetes.io/docs/concepts/containers/images/#using-a-private-registry
+
+```
+docker login # Adds credentails to ~/.docker/config.json
+for h in $HOSTS; do scp ~/.docker/config.json root@$h:/var/lib/kubelet/config.json; done
+# Now you can tag/pull using your dockerhub username.
+```
+
+## Other resources
+
+These are guides similar to this one that I found later:
+* https://unofficial-kubernetes.readthedocs.io/en/latest/getting-started-guides/kubeadm/
+* https://developer.ibm.com/tutorials/developing-a-kubernetes-application-with-local-and-remote-clusters/
