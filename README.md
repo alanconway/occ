@@ -26,6 +26,29 @@ From here on I assume that servers with names (or aliases) `master`,
 
      HOSTS="node1 node2 master"
 
+## Prepare the console
+
+```
+sudo dnf install -y kubernetes-client
+```
+
+NOTE: `sudo dnf install -y docker` (version 1.13.1) works fine for the cluster,
+the knative-tutorial examples need a more recent version:
+```
+sudo dnf -y install dnf-plugins-core
+source /etc/os-release
+cat <<EOF | sudo tee /etc/yum.repos.d/docker-ce.repo
+[docker-ce-stable]
+name=Docker CE Stable
+baseurl=https://download.docker.com/linux/fedora/$VERSION_ID/x86_64/stable
+enabled=1
+gpgcheck=1
+gpgkey=https://download.docker.com/linux/fedora/gpg
+EOF
+sudo dnf -y install docker-ce
+sudo systemctl enable --now docker
+```
+
 ## Prepare the servers
 
 Do a normal Fedora workstation install on each server, make sure to set the `hostname`.
@@ -196,10 +219,8 @@ for h in $HOSTS; do ssh root@$h reboot now; done
 
 ## Use a private docker registry
 
-With a multi-node cluster you need to pull images from an external registry.
-
-The popular minikube short-cut of using the cluster's docker daemon directly
-only works because there is only on node, so only one docker daemon.
+With a multi-node cluster you need to pull images from an external registry,
+the minikube/minishift short-cut of using the cluster's docker daemon does not work.
 
 Here's how to use your own dockerhub.io account as a registry:
 https://kubernetes.io/docs/concepts/containers/images/#using-a-private-registry
@@ -207,7 +228,7 @@ https://kubernetes.io/docs/concepts/containers/images/#using-a-private-registry
 ```
 docker login # Adds credentails to ~/.docker/config.json
 for h in $HOSTS; do scp ~/.docker/config.json root@$h:/var/lib/kubelet/config.json; done
-# Now you can tag/pull using your dockerhub username.
+# Now you can pull images using your dockerhub username as the repository.
 ```
 
 ## Other resources
