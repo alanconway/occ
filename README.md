@@ -1,7 +1,9 @@
 # Create fedora bare-metal cluster with kubeadm
 
 Short-cut instructions that work for me, your mileage may vary.
-Based on https://kubernetes.io/docs/setup/independent/create-cluster-kubeadm
+Based on
+- https://kubernetes.io/docs/setup/independent/create-cluster-kubeadm
+- https://kubernetes.io/docs/setup/independent/install-kubeadm
 
 Setup is done via `ssh` from a "console" workstation, which should not
 be part of the cluster. You need an SSH certificate on the console.
@@ -20,7 +22,6 @@ You should review all the config files, you **must** modify:
 * `./etc/hosts`
 * `./config/metallb.yml`
 
-
 From here on I assume that servers with names (or aliases) `master`,
 `node1`, and `node2`. The environment variable HOSTS shoul be set to:
 
@@ -28,26 +29,10 @@ From here on I assume that servers with names (or aliases) `master`,
 
 ## Prepare the console
 
-```
-sudo dnf install -y kubernetes-client
-```
-
-NOTE: `sudo dnf install -y docker` (version 1.13.1) works fine for the cluster,
-the knative-tutorial examples need a more recent version:
-```
-sudo dnf -y install dnf-plugins-core
-source /etc/os-release
-cat <<EOF | sudo tee /etc/yum.repos.d/docker-ce.repo
-[docker-ce-stable]
-name=Docker CE Stable
-baseurl=https://download.docker.com/linux/fedora/$VERSION_ID/x86_64/stable
-enabled=1
-gpgcheck=1
-gpgkey=https://download.docker.com/linux/fedora/gpg
-EOF
-sudo dnf -y install docker-ce
-sudo systemctl enable --now docker
-```
+The console needs
+- `ssh`
+- a valid `.ssh` key-pair for no-password login.
+- `sudo dnf install -y kubernetes-client`
 
 ## Prepare the servers
 
@@ -97,14 +82,21 @@ Copy configuration files from ./etc
 for h in $HOSTS; do scp -r etc root@$h:/; done
 ```
 
-Install packages (in background on all nodes concurrently - wait till finished!)
+NOTE: the packaged docker (1.13.1) is to old for kubernetes,
+and we need to configure it for systemd: https://kubernetes.io/docs/setup/cri
 ```
-for h in $HOSTS; do ssh root@$h dnf install -y ipvsadm docker kubernetes-kubeadm & done
+for h in $HOSTS; do
+    sudo dnf erase -y docker docker-*
+    sudo dnf -y install dnf-plugins-core
+    sudo dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo
+    sudo dnf install -y docker-ce docker-ce-cli containerd.io
+    sudo systemctl enable --now docker
+done
 ```
 
-Enable basic services
+Install other packages:
 ```
-for h in $HOSTS; do ssh root@$h systemctl enable --now docker kubelet; done
+for h in $HOSTS; do ssh root@$h dnf install -y ipvsadm kubernetes-kubeadm; done
 ```
 
 Initialize master, copy administrator config file to console so you can run kubectl.
@@ -122,15 +114,16 @@ Install the pod overlay network. I chose "flannel", other options are described 
 https://kubernetes.io/docs/setup/independent/create-cluster-kubeadm/#pod-network
 
 ```
+# kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
 kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/a70459be0084506e4ec919aa1c114638878db11b/Documentation/kube-flannel.yml
-kubectl node get -w # Wait till all nodes ready
+kubectl get nodes -w # Wait till master node is ready
 ```
 
-Join your nodes to their master. Note the kubeadm-init file was generated
+Join nodes to the master. Note the kubeadm-init file was generated
 when you initialized the master above.
 
 ```
-JOIN_CMD=$(grep 'kubeadm join' kubeadm-init)
+JOIN_CMD=$(grep 'kubeadm join .* --token' kubeadm-init)
 for h in node1 node2; do ssh root@$h $JOIN_CMD --ignore-preflight-errors=SystemVerification; done
 ```
 
@@ -141,6 +134,8 @@ NOTE: you must upate config/metallb.yml for your network.
 ```
 kubectl apply -f https://raw.githubusercontent.com/google/metallb/v0.7.3/manifests/metallb.yaml
 kubectl apply -f config/metallb.yml
+# Sanity check: should all be RUNNING
+kubectl get pods --all-namespaces # 
 ```
 
 ## Verifying the cluster
@@ -161,7 +156,7 @@ kubectl delete svc hello-node
 Expose hello-world as a LoadBalancer - needs a load balancer configured.
 ```
 kubectl expose deployment hello-node --type=LoadBalancer --port=8080
-kubectl get svc hello-node -w # Wait till it has an external IP
+kubectl get svc hello-node # Wait till it has an external IP
 IP_ADDR=$(kubectl get svc hello-node -o=go-template='{{index .status.loadBalancer.ingress 0 "ip"}}')
 curl $IP_ADDR:8080
 kubectl delete svc hello-node
@@ -186,9 +181,9 @@ sonobuoy delete --wait --all
 
 ## Knative install
 
-```
-./bin/apply-knative
-```
+See `bin/apply-knative`
+
+## Tutorial notes
 
 Verify istio: https://github.com/istio/istio/tree/master/samples/helloworld
 
@@ -210,7 +205,7 @@ for h in node1 node2; do
 done
 for h in $HOSTS; do
     ssh root@$h kubeadm reset --force
-    ssh root@$h "dnf erase -y 'kube*' flannel etcd docker"
+    ssh root@$h "dnf erase -y 'kube*' flannel etcd docker-ce"
     ssh root@$h rm -rfv /etc/kubernetes /usr/libexec/kubernetes /etc/docker */var/lib/docker /usr/libexec/docker /etc/etcd /etc/sysconfig/flanneld /var/lib/cni
     ssh root@$h 'iptables -F && iptables -t nat -F && iptables -t mangle -F && iptables -X'
 done

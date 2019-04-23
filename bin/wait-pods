@@ -1,10 +1,19 @@
 #!/bin/sh
-# Wait for pods in namespaces $* to be ready
+# Wait for pods in namespaces $* to be ready.
+# Requires at least one READY pod per namespace
 set -e
 
-get_wait() {
+get_ns() {
+k get pods -o jsonpath=$'{range .items[*]}{.status.phase}\n{end}' | sort -u
+    pods=$(kubectl get pods $*) | grep -v -E "(Running|Completed|Succeeded)")
+}
+get_all() {
+    local unready
+    for ns in "$@"; do
+        unready="$unready$(kubectl get pods $* | grep -v -E "(Running|Completed|Succeeded|STATUS)")
+    done
     DELAY=1
-    while UNREADY=$(kubectl get pods $* | grep -v -E "(Running|Completed|STATUS)"); do
+    while 
         echo "Unready pods in $*, waiting..."
         echo $UNREADY
         sleep $DELAY;
