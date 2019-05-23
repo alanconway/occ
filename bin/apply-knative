@@ -4,10 +4,14 @@
 PATH="$PATH:$(dirname $0)"      # Find wait-pods in path or same directory
 set -x -e
 
-kubectl apply --filename https://github.com/knative/serving/releases/download/v0.5.0/istio-crds.yaml
-kubectl apply --filename https://github.com/knative/serving/releases/download/v0.5.0/istio.yaml
+kubectl apply -f ./third_party/istio-1.1-latest/istio-crds.yaml
+while [[ $(kubectl get crd gateways.networking.istio.io -o jsonpath='{.status.conditions[?(@.type=="Established")].status}') != 'True' ]]; do
+  echo "Waiting on Istio CRDs"; sleep 1
+done
+kubectl apply -f ./third_party/istio-1.1-latest/istio.yaml
 kubectl label namespace default istio-injection=enabled --overwrite
-wait-pods istio-system
+
+wait-pods -n istio-system
 
 kubectl apply --filename https://github.com/knative/serving/releases/download/v0.5.0/serving.yaml \
    --filename https://github.com/knative/build/releases/download/v0.5.0/build.yaml \
@@ -15,3 +19,5 @@ kubectl apply --filename https://github.com/knative/serving/releases/download/v0
    --filename https://github.com/knative/eventing-sources/releases/download/v0.5.0/eventing-sources.yaml \
    --filename https://github.com/knative/serving/releases/download/v0.5.0/monitoring.yaml \
    --filename https://raw.githubusercontent.com/knative/serving/v0.5.0/third_party/config/build/clusterrole.yaml
+
+wait-pods --all-namespaces
