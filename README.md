@@ -79,8 +79,9 @@ NOTE: It should be possible to open a limited set of ports but I haven't got tha
 ## Install packages
 
 NOTE: from  https://kubernetes.io/docs/setup/cri
-- Fedora packaged docker (1.13.1) is to old for kubernetes, use fedora-ce
+- Fedora 29 packaged docker (1.13.1) is to old for kubernetes, use fedora-ce
 - We will configure docker for systemd in the next section
+- On fedora 30 you should `dnf install moby-engine` instead of docker-ce.
 
 Remove old docker, add docker-ce repository:
 
@@ -246,9 +247,10 @@ FIXME: stuck in pending state. Need to clean up URL access.
 
 ```
 docker login
+export KO_DOCKER_REPO=$(docker info | awk '/Username: / {print $2}')
 PATH=$PATH:$PWD/bin
-KN=$HOME/go/src/github.com/knative
-cd $KN
+
+cd $HOME/go/src/github.com/knative
 
 kubectl apply -f serving/third_party/istio-1.1-latest/istio-crds.yaml
 wait-crd gateways.networking.istio.io
@@ -260,11 +262,14 @@ wait-crd certificates.certmanager.k8s.io
 kubectl apply -f serving/third_party/cert-manager-0.6.1/cert-manager.yaml --validate=false
 wait-pods --all-namespaces
 
+# Set a branch/tag
+# REV=master for d in *; do git -C $d checkout $REV; done
 ko apply -f serving/config/ && wait-pods --all-namespaces
 ko apply -f eventing/config/ && wait-pods --all-namespaces
-ko apply -f eventing/config/provisioners/in-memory-channel/; && wait-pods --all-namespaces
+ko apply -f eventing/config/provisioners/in-memory-channel/ && wait-pods --all-namespaces
 ko apply -f eventing-sources/config/ && wait-pods --all-namespaces
 
+# Running tests
 cd eventing
 sh test/upload-test-images.sh latest
 time go test -v -tags=e2e -count=1 -short -parallel=1 ./...
