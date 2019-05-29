@@ -300,7 +300,7 @@ done
 for h in $HOSTS; do ssh root@$h reboot now; done
 ```
 
-## Other resources
+# Other resources
 
 The following guides are similar to this one, that I found them later:
 * https://unofficial-kubernetes.readthedocs.io/en/latest/getting-started-guides/kubeadm/
