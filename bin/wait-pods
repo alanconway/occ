@@ -4,4 +4,3 @@
 while kubectl get pods "$@" | grep -v -E '(Running|Completed|Succeeded|STATUS)'; do
     echo "wait-pods $@"; sleep 2
 done
-

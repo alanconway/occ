@@ -1,0 +1,23 @@
+#!/bin/bash
+# Short cuts for various k8 and kubernetes operations
+
+CMD=$1; shift
+case $CMD in
+    ingress)
+        kubectl get svc istio-ingressgateway --namespace istio-system --output 'jsonpath={.status.loadBalancer.ingress[0].ip}{"\n"}'
+        ;;
+    host)
+        kubectl get route $1  --output jsonpath='{.status.domain}{"\n"}'
+        ;;
+    user)
+        CTX=$(kubectl config current-context)
+        USER=$(kubectl config view -o jsonpath="{..contexts[?(@.name == '$CTX')].context.user}{'\n'}")
+        echo $USER
+        ;;
+    label-services)
+        # Hack: label all NodePort services as kubernetes.io/cluster-service=true
+        SVC=$(kubectl get svc -o jsonpath="{..items[?(@.spec.type == 'NodePort')].metadata.name}{'\n'}" --all-namespaces)
+        echo $SVC
+        ;;
+    *) echo unknown command $CMD
+esac
