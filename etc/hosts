@@ -8,6 +8,8 @@
 192.168.2.101 oscar1 node1
 192.168.2.102 oscar2 node2
 192.168.2.103 oscar3 master
+192.168.2.104 oscar4
+192.168.2.105 oscar5
 
 # Address allocation
 # 1-9: Hard-wired adresses, e.g. bare-metal routers.

@@ -52,14 +52,12 @@ http://fedoranews.org/dowen/sshkeys/[this guide].
 Prepare the servers
 ~~~~~~~~~~~~~~~~~~~
 
-Do a normal Fedora workstation install on each server, make sure to set
-the `hostname`.
-
 Log into each each to server enable ssh and disable suspend (for laptops).
 Note this should be the last time you need to touch the servers.
 
 ....
 # On each server
+sudo hostnamectl set-hostname # set an appropriate name
 systemctl enable --now sshd
 systemctl mask --now sleep.target suspend.target hibernate.target hybrid-sleep.target
 ....
@@ -84,8 +82,17 @@ Disable swapping (required by `kubeadm`) and firewalls:
 for h in $HOSTS; do
     ssh root@$h swapoff -a # kubeadm wants no swapping
     ssh root@$h "sed -i -E 's/(^.*\\<swap\\>.*$)/# \\1/' /etc/fstab"
-    sudo systemctl mask firewalld
+    ssh root@$h systemctl mask firewalld
 done
+....
+
+Upgrade packages
+
+....
+for h in $HOSTS; do
+    ssh -n root@$h dnf -y update&
+done
+wait; echo done
 ....
 
 NOTE: In theory you can keep firwalls running with a
@@ -96,23 +103,41 @@ https://kubernetes.io/docs/setup/independent/install-kubeadm/#check-required-por
 NOTE: Fedora `docker` package is https://kubernetes.io/docs/setup/cri[too old] for k8s. +
 On Fedora 29 use `docker-ce`, on Fedora 30 use `moby-engine`.
 
-Remove old docker if already installd, add docker-ce repository:
+Remove old docker if already installed:
 
 ....
 for h in $HOSTS; do
-    ssh root@$h 'dnf erase -y docker docker-* && rm -rf /etc/docker' && dnf -y install dnf-plugins-core && dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo' &
+    ssh -n root@$h 'dnf erase -y docker docker-* && rm -rf /etc/docker'
 done
 wait; echo done
 ....
 
-Install packages.
+For Fedora 29:
+....
+for h in $HOSTS; do
+    ssh -n root@$h 'dnf -y install dnf-plugins-core && \
+    dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo && \
+    dnf install -y docker-ce docker-ce-cli'
+done
+wait; echo done
+....
+
+For Fedora 30:
+....
+for h in $HOSTS; do
+  ssh -n root@$h dnf -y install moby-engine &
+done
+wait; echo done
+....
+
+Install other packages.
 
 ....
 for h in $HOSTS; do
-    ssh -n root@$h dnf install -y docker-ce docker-ce-cli containerd.io ipvsadm kubernetes-kubeadm &
+    ssh -n root@$h dnf -y install containerd ipvsadm kubernetes-kubeadm&
 done
 wait; echo done
-for h in $HOSTS; do ssh root@$h 'systemctl enable --now docker kubelet && systemctl is-active docker; done
+for h in $HOSTS; do ssh root@$h 'systemctl enable --now docker kubelet && systemctl is-active docker'; done
 ....
 
 NOTE: kubelet will report errors in the system log file until the master is initialized in the next section.
