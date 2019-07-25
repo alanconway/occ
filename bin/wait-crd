@@ -1,5 +1,6 @@
 #!/bin/sh
 # Wait for CRDs $* to be ready.
+test -n "$*" || { echo must specify crds; exit 1; }
 while [[ $(kubectl get crd "$@" -o jsonpath='{.status.conditions[?(@.type=="Established")].status}') != 'True' ]]; do
     echo "wait-crds $*"; sleep 1
 done

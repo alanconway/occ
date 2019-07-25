@@ -1,3 +1,4 @@
+# Seems no longer needed on fedora 30.
 {
   "exec-opts": ["native.cgroupdriver=systemd"],
   "log-driver": "json-file",

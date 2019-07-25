@@ -9,4 +9,6 @@ data:
     - name: default
       protocol: layer2
       addresses:
-      - 192.168.2.150-192.168.2.250
+      - 192.168.1.150-192.168.1.250
+
+# Router DHCP setup: reserve addresses 150-250 for load balancer.

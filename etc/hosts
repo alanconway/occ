@@ -1,18 +1,3 @@
 127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
 ::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
 
-192.168.2.1  mynetwork
-192.168.2.10 garage
-
-192.168.2.100 grommit console
-192.168.2.101 oscar1 node1
-192.168.2.102 oscar2 node2
-192.168.2.103 oscar3 master
-192.168.2.104 oscar4
-192.168.2.105 oscar5
-
-# Address allocation
-# 1-9: Hard-wired adresses, e.g. bare-metal routers.
-# 10-110: DHCP - cluster nodes have fixed DHCP reservations.
-# 111-149: Unused
-# 150-250: reserved for load balancer
