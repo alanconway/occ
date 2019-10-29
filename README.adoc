@@ -1,4 +1,5 @@
 = Cluster For Clouds Using Kubernetes™
+Alan Conway
 :prewrap!:
 :toc: preamble
 
@@ -7,8 +8,12 @@ bare-metal kubernetes cluster consisting of discarded laptops running
 Fedora 30. This describes how I set it up, for anyone who cares about
 such things.
 
-.The ClusterFCUK
-image::old_crap_cluster.jpg[ClusterFCUK, ClusterFCUK, caption="",  ClusterFcuk", width=75%]
+image::old_crap_cluster.jpg[ClusterFCUK, ClusterFCUK, width=80%]
+
+[quote, Magnus Pinguis Mendacium] 
+If you can make it run on the ClusterFCUK, you can make it run *anywhere*.
+
+'''
 
 == Setting up the cluster
 
@@ -39,7 +44,6 @@ My servers are called `master`, `node1`, `node2` and `node3`, adjust
 for your servers. Set the console environment as follows:
 ....
 export HOSTS="master node1 node2 node3"
-export KUBECONFIG=$HOME/.kube/config:$HOME/.kube/occ.config
 ....
 
 Install `ssh` and the kubernetes client
@@ -67,7 +71,7 @@ NOTE: The remaining steps are done from the console.
 
 Enable no-password ssh login for self and root.
 
-- You need an SSH key pair in `~/.ssh` on the console workstation.
+- You need an SSH key pair in `$HOME/.ssh` on the console workstation.
 - You’ll have to enter passwords this one time, but no more.
 
 ....
@@ -136,20 +140,20 @@ Copy configuration files from ./etc
 for h in $HOSTS; do scp -r etc root@$h:/; done
 ....
 
-Initialize master, copy administrator config and install a network overlay. I used `flannel`, there are
-https://kubernetes.io/docs/setup/independent/create-cluster-kubeadm/#pod-network[other options].
-
-[NOTE]
-====
-`--pod-network-cidr=10.244.0.0/16` is for flannel. +
-`--ignore-preflight` is to ignore _unsupported kernel version_ warnings.
-====
-
+Initialize master, copy merge administrator config into ~/.kube/config
 ....
 ssh -lroot master kubeadm init --pod-network-cidr=10.244.0.0/16 --ignore-preflight-errors=SystemVerification
-# Copy admin.conf to the console so kubectl will talk to our cluster.
 scp root@master:/etc/kubernetes/admin.conf $HOME/.kube/occ.config
-export KUBECONFIG=$HOME/.kube/occ.config
+( cd $HOME/.kube; KUBECONFIG=config:occ.config kubectl view > config; )
+....
+
+Install network overlay. I used `flannel`, there are
+https://kubernetes.io/docs/setup/independent/create-cluster-kubeadm/#pod-network[other options].
+
+* `--pod-network-cidr=10.244.0.0/16` is for flannel. +
+* `--ignore-preflight` is to ignore _unsupported kernel version_ warnings.
+
+....
 kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
 bin/wait-pods --all-namespaces
 ....
@@ -306,6 +310,19 @@ sh test/upload-test-images.sh latest
 time go test -v -tags=e2e -count=1 -short -parallel=1 ./...
 ....
 
+== Openshift (TBD)
+
+Tried using openshift-under-kubernetes helper to install openshift.
+
+....
+pip install --user openshift-under-kubernetes
+openshift-under-kubernetes --context kubernetes-admin@kubernetes deploy --load-balancer --create-volume
+....
+
+No joy yet - failed to create storage volume - need to create separately?
+
+
+
 = Re-setting the cluster
 
 This should shut down your cluster and remove all config changes made by
@@ -323,7 +340,7 @@ done
 Other resources
 ---------------
 
-The following guides are similar to this one, that I found them later: *
-https://unofficial-kubernetes.readthedocs.io/en/latest/getting-started-guides/kubeadm/
-*
-https://developer.ibm.com/tutorials/developing-a-kubernetes-application-with-local-and-remote-clusters/
+The following guides are similar to this one, but I found them too late to benefit:
+
+* https://unofficial-kubernetes.readthedocs.io/en/latest/getting-started-guides/kubeadm/
+* https://developer.ibm.com/tutorials/developing-a-kubernetes-application-with-local-and-remote-clusters/
