@@ -1,0 +1,73 @@
+= Installing Openshift
+
+== Network Configuration
+
+**FIXME** need to keep LinkSys DHCP server on for wifi? 2 DHCPs or Proxy?
+
+Network:
+
+- IPv4: 192.168.1.0/24, gateway 192.168.1.1, domain "garage"
+
+gateway.garage 192.168.1.1: LinkSys router, external DNS, DHCP off
+
+netinfo.garage 192.168.1.2: Fedora Server 31 + dnsmasq
+- local DNS (/etc/hosts), DHCP, TFTP, HTTP
+
+TODO // FIXME(alanconway) 
+- VPN from house network and outside.
+- load balancer
+- NFS storage.
+
+Cluster nodes: node1 - node4, DHCP reservations 192.168.1.101 - 105
+- node1,2: worker
+- node3: bootstrap, then add as worker later.
+- node4: master - no control plane HA
+
+=== Netinfo server
+
+Fedora Server 31, use netmasq
+
+----
+ssh-copy-id root@node5
+
+scp -r ./etc root@node5:/
+
+ssh root@node5 -T <<'EOF'
+systemctl mask --now sleep.target suspend.target hibernate.target hybrid-sleep.target
+systemctl enable --now dnsmasq.service
+for PORT in domain bootps tftp http nfsd; do
+    firewall-cmd --add-port $PORT/tcp
+    firewall-cmd --add-port $PORT/udp
+done
+firewall-cmd --runtime-to-permanent
+EOF
+
+ssh root@node5 reboot now
+----
+
+  http://www.thekelleys.org.uk/dnsmasq/docs/setup.html[Configuring Dnsmasq]
+
+- [ ] Configure dnsmasq: DNS (from /etc/hosts), DHCP (fixed addresses), PXE booting.
+- [ ] Configure load balancer, HTTP server: Ngnix
+- [ ] NFS server.
+
+== Openshift install
+
+
+Cluster name: occ.garage
+
+https://blog.openshift.com/openshift-4-bare-metal-install-quickstart/[HAProxy example (openshift 4.1)]
+
+https://docs.openshift.com/container-platform/4.2/installing/installing_bare_metal/installing-bare-metal.html#installation-dns-user-infra_installing-bare-metal[Add cluster DNS names] - single names, no load balancer?
+
+Open all firewalls https://docs.openshift.com/container-platform/4.2/installing/installing_bare_metal/installing-bare-metal.html#installation-network-user-infra_installing-bare-metal][See here for required ports.]
+
+
+https://docs.openshift.com/container-platform/4.2/installing/installing_bare_metal/installing-bare-metal.html
+
+
+----
+dnf install haproxy
+setsebool -P haproxy_connect_any 1
+systemctl enable --now haproxy
+----
